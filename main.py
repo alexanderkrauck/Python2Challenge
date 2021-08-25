@@ -8,12 +8,14 @@ import torch
 import utils.data as data
 import utils.training as training
 
+from utils.baselines import Autoencoder, Unet
+
 search_grid = {
-    "hidden_channels": [64, 256, 1028],
+    "n_hidden_channels": [64, 256, 1024],
     "depthness": [2],
     "lr": [1e-2, 1e-3],
-    "weight_decay": [1e-8, 1e-3],
-    "batch_size": [256, 64, 16]
+    "weight_decay": [1e-8, 1e-5],
+    "batch_size": [64, 16]
 }
 
 
@@ -41,8 +43,16 @@ def main(
 
     ldir = logdir + "/" + name
     
+    if architecture == "autoencoder":
+        model_class = Autoencoder
+    elif architecture == "unet":
+        model_class = Unet
+    else:
+        print(f"Architecture \"{architecture}\" unknown. Stopping!")
+        return
+
     training.search_configs(
-        model_class, #TODO
+        model_class,
         data_module, 
         search_grid, 
         randomly_try_n = configs, 
@@ -59,8 +69,8 @@ if __name__ == '__main__':
     parser.add_argument("-n", "--name", help="Name of the experiment", default=f"*time*")
     parser.add_argument("-l", "--logdir", help="Directories where logs are stored", default=f"runs")
     parser.add_argument("-c", "--configs", help="Number of configs to try", default=5)
-    parser.add_argument("-a", "--architecture", help="The architecture of choice", default="")
-    parser.add_argument("-d", "--device", help="The device of choice", default="cpu")
+    parser.add_argument("-a", "--architecture", help="The architecture of choice", default="unet")
+    parser.add_argument("-d", "--device", help="The device of choice", default="cuda")
 
     args = parser.parse_args()
 

@@ -30,20 +30,23 @@ def train(model, optimizer, loader, epoch: int, logger: SummaryWriter, device = 
         iterate = loader
 
     batch_nr = 0
-    for input_x, other, full_x in iterate:
-        x, full_x = x.float().to(device), full_x.float().to(device)
+    for x, input, (left_margin, left_margin_size, top_margin, top_margin_size) in iterate:
+
+        x, full_x = x.float().unsqueeze(1).to(device), input.unsqueeze(1).float().to(device)
 
         out = model(x)
 
 
-        loss = F.mse_loss(full_x, out)
+        losses = F.mse_loss(full_x, out, reduction="none")
+        losses[input != -1] *= 0.05 #questionable
+        loss = torch.mean(losses)
 
         optimizer.zero_grad() 
         loss.backward()
         optimizer.step()
 
         global_step = loader.batch_size * (n_minibatches * (epoch - 1) + batch_nr + 1)#sample dependent
-        logger.add_scalar(f"MSE", loss.detach().cpu().numpy(), global_step=global_step)
+        logger.add_scalar(f"MSE-TRAIN", loss.detach().cpu().numpy(), global_step=global_step)
 
         batch_nr += 1
 
@@ -51,7 +54,7 @@ def train(model, optimizer, loader, epoch: int, logger: SummaryWriter, device = 
 
         
 
-def test(model, loader, epoch:int, logger: SummaryWriter, run_type = "test", device = "cpu", use_tqdm = False):
+def test(model, loader, epoch:int, logger: SummaryWriter, run_type:str = "test", device:str = "cpu", use_tqdm = False):
     model.eval()
 
     if use_tqdm:
@@ -59,12 +62,17 @@ def test(model, loader, epoch:int, logger: SummaryWriter, run_type = "test", dev
     else:
         iterate = loader
 
-    for input_x, other, full_x in iterate:
-        x, full_x = x.float().to(device), full_x.float().to(device)
+    means = []
+    for x, input, (left_margin, left_margin_size, top_margin, top_margin_size) in iterate:
+        x, input = x.unsqueeze(1).float().to(device), input.unsqueeze(1).float().to(device)
 
-        out = model(x)
+        out = model(input)
+        losses = F.mse_loss(x, out, reduction="none")
+        losses[input != -1] *= 0
+        loss = torch.mean(losses, dim=[1,2,3])
+        means.extend(loss.detach().cpu().numpy())
 
-        #TODO: calculate changed approx (where the mid part is changed)
+    logger.add_scalar(f"MSE-{run_type.upper()}", np.mean(means), global_step=epoch)
     
     logger.flush()
 
@@ -72,29 +80,27 @@ def train_config(
     model_class,
     data_module,
     logger: SummaryWriter,
-    hidden_channels = 128,
-    depthness = 2, 
     lr = 1e-2,
     weight_decay = 1e-8,
     batch_size = 64,
     epochs = 100, 
-    device = "cpu"
+    device = "cpu",
+    **kwargs
     ):
 
     model = model_class(
         data_module = data_module,
-        n_hidden_channels = hidden_channels,
-        depthness = depthness
+        **kwargs
     ).to(device)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
 
 
     train_loader = data_module.make_train_loader(batch_size = batch_size)
-    val_loader = data_module.make_val_loader()
+    val_loader = data_module.make_val_loader(batch_size = batch_size)
 
-    test(model, train_loader, 0, logger, run_type="train", device = device)
     test(model, val_loader, 0, logger, run_type="validation", device = device)
+    test(model, train_loader, 0, logger, run_type="train", device = device)
 
     for epoch in range(1, epochs + 1):
     
@@ -136,8 +142,8 @@ def search_configs(model_class, data_module, search_grid, randomly_try_n = -1, l
             model_class = model_class,
             data_module = data_module,
             logger = logger,
-            hidden_channels = config["hidden_channels"], 
-            head_depth = config["depthness"],
+            n_hidden_channels = config["n_hidden_channels"], 
+            depthness = config["depthness"],
             weight_decay= config["weight_decay"],
             lr =  config["lr"], 
             batch_size = config["batch_size"],

@@ -32,12 +32,12 @@ def train(model, optimizer, loader, epoch: int, logger: SummaryWriter, device = 
     batch_nr = 0
     for x, input, (left_margin, left_margin_size, top_margin, top_margin_size) in iterate:
 
-        x, full_x = x.float().unsqueeze(1).to(device), input.unsqueeze(1).float().to(device)
+        x, input = x.unsqueeze(1).float().to(device), input.unsqueeze(1).float().to(device)
 
-        out = model(x)
+        out = model(input)
 
 
-        losses = F.mse_loss(full_x, out, reduction="none")
+        losses = F.mse_loss(x, out, reduction="none")
         losses[input != -1] *= 0.05 #questionable
         loss = torch.mean(losses)
 

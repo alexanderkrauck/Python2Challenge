@@ -37,7 +37,7 @@ def train(model, optimizer, loader, epoch: int, logger: SummaryWriter, device = 
         out = model(input)
 
 
-        losses = F.mse_loss(x, out, reduction="none")
+        losses = F.mse_loss(out, x, reduction="none")
         losses[input != -1] *= 0.05 #questionable
         loss = torch.mean(losses)
 
@@ -67,12 +67,12 @@ def test(model, loader, epoch:int, logger: SummaryWriter, run_type:str = "test",
         x, input = x.unsqueeze(1).float().to(device), input.unsqueeze(1).float().to(device)
 
         out = model(input)
-        losses = F.mse_loss(x, out, reduction="none")
+        losses = -F.mse_loss(torch.max(out,torch.zeros_like(out)) * 255, x * 255, reduction="none") #This should be the same format as in the challenge servers
         losses[input != -1] *= 0
         loss = torch.mean(losses, dim=[1,2,3])
         means.extend(loss.detach().cpu().numpy())
 
-    logger.add_scalar(f"MSE-{run_type.upper()}", np.mean(means), global_step=epoch)
+    logger.add_scalar(f"MSE-SUBMISSION-{run_type.upper()}", np.mean(means), global_step=epoch)
     
     logger.flush()
 
@@ -100,7 +100,7 @@ def train_config(
     val_loader = data_module.make_val_loader(batch_size = batch_size)
 
     test(model, val_loader, 0, logger, run_type="validation", device = device)
-    test(model, train_loader, 0, logger, run_type="train", device = device)
+    #test(model, train_loader, 0, logger, run_type="train", device = device)
 
     for epoch in range(1, epochs + 1):
     

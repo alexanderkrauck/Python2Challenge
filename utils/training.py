@@ -69,13 +69,12 @@ def validate(model, loader, epoch:int, logger: SummaryWriter, run_type:str = "te
         x, input = x.unsqueeze(1).float().to(device), input.unsqueeze(1).float().to(device)
 
         out = model(input)
+        
         losses = -F.mse_loss(torch.max(out, torch.zeros_like(out)) * 255, x * 255, reduction="none") #This should be the same format as in the challenge servers
-        #TODO
-        #ERROR HERE:
         losses[input != -1] *= 0
         normalization = torch.sum(input == -1, dim=[1,2,3])
         loss = torch.sum(losses, dim=[1,2,3]) / normalization
-        #ERROR ABOVE!
+        
         means.extend(loss.detach().cpu().numpy())
 
     logger.add_scalar(f"MSE-SUBMISSION-{run_type.upper()}", np.mean(means), global_step=epoch)
@@ -98,6 +97,7 @@ def train_config(
     batch_size = 64,
     epochs = 10, 
     device = "cpu",
+    tqdm = False,
     **kwargs
     ):
 
@@ -112,18 +112,18 @@ def train_config(
     train_loader = data_module.make_train_loader(batch_size = batch_size)
     val_loader = data_module.make_val_loader(batch_size = batch_size)
 
-    validate(model, val_loader, 0, logger, run_type="validation", device = device)
+    validate(model, val_loader, 0, logger, run_type="validation", device = device, use_tqdm=tqdm)
 
     for epoch in range(1, epochs + 1):
     
-        train(model, optimizer, train_loader, epoch, logger, device = device)
-        validate(model, val_loader, epoch, logger, run_type="validation", device = device)
+        train(model, optimizer, train_loader, epoch, logger, device = device, use_tqdm=tqdm)
+        validate(model, val_loader, epoch, logger, run_type="validation", device = device, use_tqdm=tqdm)
 
 def dict_product(dicts):
 
     return (dict(zip(dicts, x)) for x in itertools.product(*dicts.values()))
 
-def search_configs(model_class, data_module, search_grid, randomly_try_n = -1, logdir = "runs", device = "cpu"):
+def search_configs(model_class, data_module, search_grid, randomly_try_n = -1, logdir = "runs", device = "cpu", tqdm = False):
 
     configurations = [config for config in dict_product(search_grid)]
     print(f"Total number of Grid-Search configurations: {len(configurations)}")
@@ -153,6 +153,7 @@ def search_configs(model_class, data_module, search_grid, randomly_try_n = -1, l
             data_module = data_module,
             logger = logger,
             device = device,
+            tqdm = tqdm,
             **config
             )
             

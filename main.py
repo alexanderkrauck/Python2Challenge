@@ -54,7 +54,8 @@ def main(
         search_grid,
         randomly_try_n=configs,
         logdir=ldir,
-        device=device
+        device=device,
+        tqdm = tqdm
     )
 
 

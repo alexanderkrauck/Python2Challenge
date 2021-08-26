@@ -33,7 +33,7 @@ class Unet(nn.Module):
     I reduces the number of challels in the layers
     """
 
-    def __init__(self, data_module, n_hidden_channels: int, depthness: int, **kwargs):
+    def __init__(self, data_module, **kwargs):
         super(Unet, self).__init__()
 
         self.e1 = EncoderBlock(1, 32)

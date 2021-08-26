@@ -29,24 +29,26 @@ class Unet(nn.Module):
 
     This is taken from
     https://medium.com/analytics-vidhya/unet-implementation-in-pytorch-idiot-developer-da40d955f201
+
+    I reduces the number of challels in the layers
     """
 
     def __init__(self, data_module, n_hidden_channels: int, depthness: int, **kwargs):
         super(Unet, self).__init__()
 
-        self.e1 = EncoderBlock(1, 64)
-        self.e2 = EncoderBlock(64, 128)
-        self.e3 = EncoderBlock(128, 256)
-        self.e4 = EncoderBlock(256, 512)
+        self.e1 = EncoderBlock(1, 32)
+        self.e2 = EncoderBlock(32, 64)
+        self.e3 = EncoderBlock(64, 128)
+        self.e4 = EncoderBlock(128, 256)
 
-        self.b = ConvBlock(512, 1024)
+        self.b = ConvBlock(256, 512)
 
-        self.d1 = DecoderBlock(1024, 512)
-        self.d2 = DecoderBlock(512, 256)
-        self.d3 = DecoderBlock(256, 128)
-        self.d4 = DecoderBlock(128, 64)
+        self.d1 = DecoderBlock(512, 256)
+        self.d2 = DecoderBlock(256, 128)
+        self.d3 = DecoderBlock(128, 64)
+        self.d4 = DecoderBlock(64, 32)
 
-        self.outputs = nn.Conv2d(64, 1, kernel_size=1, padding=0)
+        self.outputs = nn.Conv2d(32, 1, kernel_size=1, padding=0)
 
     def forward(self, x):
 

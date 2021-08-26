@@ -38,8 +38,10 @@ def train(model, optimizer, loader, epoch: int, logger: SummaryWriter, device = 
 
 
         losses = F.mse_loss(out, x, reduction="none")
-        losses[input != -1] *= 0.05 #questionable
-        loss = torch.mean(losses)
+        not_target = input != -1
+        full_weight = (~not_target).sum() + not_target.sum() * 0.05
+        losses[not_target] *= 0.05 #questionable, maybe make it 0
+        loss = torch.sum(losses) / full_weight
 
         optimizer.zero_grad() 
         loss.backward()
@@ -54,7 +56,7 @@ def train(model, optimizer, loader, epoch: int, logger: SummaryWriter, device = 
 
         
 
-def test(model, loader, epoch:int, logger: SummaryWriter, run_type:str = "test", device:str = "cpu", use_tqdm = False):
+def validate(model, loader, epoch:int, logger: SummaryWriter, run_type:str = "test", device:str = "cpu", use_tqdm = False):
     model.eval()
 
     if use_tqdm:
@@ -67,14 +69,25 @@ def test(model, loader, epoch:int, logger: SummaryWriter, run_type:str = "test",
         x, input = x.unsqueeze(1).float().to(device), input.unsqueeze(1).float().to(device)
 
         out = model(input)
-        losses = -F.mse_loss(torch.max(out,torch.zeros_like(out)) * 255, x * 255, reduction="none") #This should be the same format as in the challenge servers
+        losses = -F.mse_loss(torch.max(out, torch.zeros_like(out)) * 255, x * 255, reduction="none") #This should be the same format as in the challenge servers
+        #TODO
+        #ERROR HERE:
         losses[input != -1] *= 0
-        loss = torch.mean(losses, dim=[1,2,3])
+        normalization = torch.sum(input == -1, dim=[1,2,3])
+        loss = torch.sum(losses, dim=[1,2,3]) / normalization
+        #ERROR ABOVE!
         means.extend(loss.detach().cpu().numpy())
 
     logger.add_scalar(f"MSE-SUBMISSION-{run_type.upper()}", np.mean(means), global_step=epoch)
     
     logger.flush()
+
+def test(model, loader, write_to, device:str = "cpu"):
+
+    for input, sample_ids in loader:
+
+        out = model(input)
+        #TODO:readout data
 
 def train_config(
     model_class,
@@ -83,7 +96,7 @@ def train_config(
     lr = 1e-2,
     weight_decay = 1e-8,
     batch_size = 64,
-    epochs = 100, 
+    epochs = 10, 
     device = "cpu",
     **kwargs
     ):
@@ -99,13 +112,12 @@ def train_config(
     train_loader = data_module.make_train_loader(batch_size = batch_size)
     val_loader = data_module.make_val_loader(batch_size = batch_size)
 
-    test(model, val_loader, 0, logger, run_type="validation", device = device)
-    #test(model, train_loader, 0, logger, run_type="train", device = device)
+    validate(model, val_loader, 0, logger, run_type="validation", device = device)
 
     for epoch in range(1, epochs + 1):
     
         train(model, optimizer, train_loader, epoch, logger, device = device)
-        test(model, val_loader, epoch, logger, run_type="validation", device = device)
+        validate(model, val_loader, epoch, logger, run_type="validation", device = device)
 
 def dict_product(dicts):
 
@@ -129,25 +141,19 @@ def search_configs(model_class, data_module, search_grid, randomly_try_n = -1, l
         config = configurations[idx]
 
 
-        config_str = str(config).replace("'","").replace(":", "-").replace(" ", "").replace("}", "").replace("_","").replace(",", "_").replace("{","_")
+        config_str = f"{trial_nr:02}" + str(config).replace("'","").replace(":", "-").replace(" ", "").replace("}", "").replace("_","").replace(",", "_").replace("{","_")
 
-        print(f"Training config {config_str} ... ", end="")
+        print(f"Training config {trial_nr:02}:\n”{config}")
         dt = time()
     
-
         logger = SummaryWriter(log_dir = logdir + "/" + config_str, comment = config_str)
-        #logger.add_hparams(config,  ,run_name= f"run{trial_nr}")
 
         train_config(
             model_class = model_class,
             data_module = data_module,
             logger = logger,
-            n_hidden_channels = config["n_hidden_channels"], 
-            depthness = config["depthness"],
-            weight_decay= config["weight_decay"],
-            lr =  config["lr"], 
-            batch_size = config["batch_size"],
-            device = device
+            device = device,
+            **config
             )
             
-        print(f"done (took {time() - dt:.2f}s)")
+        print(f"Done (took {time() - dt:.2f}s)")

@@ -1,4 +1,3 @@
-
 """
 Baselines for this task
 """
@@ -8,18 +7,18 @@ __email__ = "alexander.krauck@gmail.com"
 __date__ = "17-08-2021"
 
 
-
 import torch
 from torch import nn
 
 import torch
 from utils.basic_modules import *
 
-class Autoencoder(nn.Module):
 
+class Autoencoder(nn.Module):
     def __init__(self, data_module, n_hidden_channels: int, depthness: int, **kwargs):
         super(Autoencoder, self).__init__()
-        #TODO: do autoencoder stuff
+        # TODO: do autoencoder stuff
+
     def forward(self, x):
         pass
 
@@ -52,7 +51,7 @@ class Unet(nn.Module):
 
     def forward(self, x):
 
-        x = torch.nn.functional.pad(x, (3,3,3,3), mode='constant', value=0)
+        x = torch.nn.functional.pad(x, (3, 3, 3, 3), mode="constant", value=0)
 
         s1, p1 = self.e1(x)
         del x
@@ -67,7 +66,7 @@ class Unet(nn.Module):
         del p4
 
         d1 = self.d1(b, s4)
-        del b,s4
+        del b, s4
         d2 = self.d2(d1, s3)
         del d1, s3
         d3 = self.d3(d2, s2)
@@ -78,7 +77,7 @@ class Unet(nn.Module):
         outputs = self.outputs(d4)
         del d4
 
-        outputs = outputs[:,:,3:-3,3:-3]
+        outputs = outputs[:, :, 3:-3, 3:-3]
 
         return outputs
 

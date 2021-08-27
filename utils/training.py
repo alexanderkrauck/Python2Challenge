@@ -142,9 +142,8 @@ def test(model, loader, write_to, device: str = "cpu"):
         res = out[~known]
         res_list.append(res.astype(np.uint8))
 
-    with open(write_to, mode = "w") as file:
+    with open(write_to, mode="w") as file:
         pickle.dump(res_list, file)
-    
 
 
 def train_config(
@@ -195,12 +194,17 @@ def train_config(
 
         if val_score > best_val_score:
             best_val_score = val_score
-            test(model, test_loader, write_to=os.path.join(logdir, f"TestResEp{epoch}.pkl"), device = device)
+            test(
+                model,
+                test_loader,
+                write_to=os.path.join(logdir, f"TestResEp{epoch}.pkl"),
+                device=device,
+            )
 
             save_dict = {
                 "model": model.state_dict(),
                 "optimizer": optimizer.state_dict(),
-                "kwargs": kwargs
+                "kwargs": kwargs,
             }
             torch.save(save_dict, os.path.join(logdir, f"ModelEp{epoch}.pkl"))
 

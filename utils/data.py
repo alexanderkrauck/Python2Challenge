@@ -79,7 +79,7 @@ class TestDataset(Dataset):
         known_array = torch.tensor(known_array, dtype=torch.bool)
         input[~known_array] = -1
 
-        return input, self.sample_ids[index]
+        return input, known_array, self.sample_ids[index]
 
 
 
@@ -87,27 +87,27 @@ class TestDataset(Dataset):
 class DataModule():
     """"""
 
-    def __init__(self, root_dir: str = "dataset", test_ratio: float = 0.2):
+    def __init__(self, root_dir: str = "dataset", val_ratio: float = 0.2):
         """
         
         Parameters
         ----------
         root_dir: str
             The root dir where the data is located or should be downloaded.
-        test_ratio: float
-            The percentage of the data-folders that should be assigned to the test set and to the validation set each.
-            This is only used for "fixed" split_mode.
+        val_ratio: float
+            The percentage of the data-folders that should be assigned to the validation set.
         """
         #Split dirs and not samples because samples are not identically distributed across directories
         self.dirs = np.array(os.listdir(root_dir))
         
-        n_testset_dirs = int(len(self.dirs) * test_ratio)
+        n_valset_dirs = int(len(self.dirs) * val_ratio)
         indices = range(len(self.dirs))
 
 
-        self.test_dataset = DirectoryDataset(self.dirs[indices[n_testset_dirs:n_testset_dirs * 2]], root_dir)
-        self.val_dataset = DirectoryDataset(self.dirs[indices[:n_testset_dirs]], root_dir)
-        self.train_dataset = DirectoryDataset(self.dirs[indices[n_testset_dirs * 2:]], root_dir)
+        self.test_dataset = TestDataset(os.path.join("challenge_testset", "testset.pkl"))
+
+        self.val_dataset = DirectoryDataset(self.dirs[indices[:n_valset_dirs]], root_dir)
+        self.train_dataset = DirectoryDataset(self.dirs[indices[n_valset_dirs :]], root_dir)
 
 
 

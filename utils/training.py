@@ -126,23 +126,23 @@ def test(model, loader, write_to, device: str = "cpu"):
 
     outs = []
     knowns = []
-    sample_ids = []
+    ids = []
     for input_arrays, known_arrays, sample_ids in loader:
 
-        out = model(input_arrays)
+        out = model(input_arrays.unsqueeze(1).to(device)).squeeze(1)
 
         outs.extend(out.detach().cpu().numpy())
         knowns.extend(known_arrays.detach().cpu().numpy())
-        sample_ids.extend(sample_ids.detach().cpu().numpy())
+        ids.extend(list(sample_ids))
 
     res_list = []
-    for out, known, sample_id in zip(outs, knowns, sample_ids):
-        assert sample_id == len(res_list)
+    for out, known, id in zip(outs, knowns, ids):
+        assert int(id) == len(res_list)
 
         res = out[~known]
         res_list.append(res.astype(np.uint8))
 
-    with open(write_to, mode="w") as file:
+    with open(write_to, mode="wb") as file:
         pickle.dump(res_list, file)
 
 
@@ -166,6 +166,7 @@ def train_config(
     train_loader = data_module.make_train_loader(batch_size=batch_size)
     val_loader = data_module.make_val_loader(batch_size=batch_size)
     test_loader = data_module.make_test_loader(batch_size=batch_size)
+
 
     best_val_score = validate(
         model,

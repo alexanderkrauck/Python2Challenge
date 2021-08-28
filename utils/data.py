@@ -75,7 +75,7 @@ class TestDataset(Dataset):
     def __getitem__(self, index):
         input_array, known_array = self.input_arrays[index], self.known_arrays[index]
 
-        input = self.first_transform(input_array)
+        input = self.first_transform(input_array).squeeze(0)
         known_array = torch.tensor(known_array, dtype=torch.bool)
         input[~known_array] = -1
 

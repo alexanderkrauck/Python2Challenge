@@ -10,20 +10,17 @@ import utils.training as training
 
 from utils.baselines import Autoencoder, Unet
 
-search_grid = {
-    "lr": [1e-2, 1e-3],
-    "weight_decay": [1e-8, 1e-5],
-    "batch_size": [64, 16]
-}
+search_grid = {"lr": [1e-2, 1e-3], "weight_decay": [1e-8, 1e-5], "batch_size": [64, 16]}
 
 
 def main(
-        name: str = "*time*",  # *time* is replaced by the datetime
-        logdir: str = "runs",
-        configs: int = 5,
-        architecture: str = "autoencoder",
-        device: str = "cpu",
-        tqdm: bool = False):
+    name: str = "*time*",  # *time* is replaced by the datetime
+    logdir: str = "runs",
+    configs: int = 5,
+    architecture: str = "autoencoder",
+    device: str = "cpu",
+    tqdm: bool = False,
+):
 
     # TODO: Add device check
     if torch.cuda.is_available():
@@ -45,7 +42,7 @@ def main(
     elif architecture == "unet":
         model_class = Unet
     else:
-        print(f"Architecture \"{architecture}\" unknown. Stopping!")
+        print(f'Architecture "{architecture}" unknown. Stopping!')
         return
 
     training.search_configs(
@@ -55,25 +52,25 @@ def main(
         randomly_try_n=configs,
         logdir=ldir,
         device=device,
-        tqdm = tqdm
+        tqdm=tqdm,
     )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument(
-        "-n", "--name", help="Name of the experiment", default=f"*time*")
+        "-n", "--name", help="Name of the experiment", default=f"new_try2"
+    )
     parser.add_argument(
-        "-l", "--logdir", help="Directories where logs are stored", default=f"runs")
-    parser.add_argument("-c", "--configs",
-                        help="Number of configs to try", default=5)
-    parser.add_argument("-a", "--architecture",
-                        help="The architecture of choice", default="unet")
+        "-l", "--logdir", help="Directories where logs are stored", default=f"runs"
+    )
+    parser.add_argument("-c", "--configs", help="Number of configs to try", default=-1)
     parser.add_argument(
-        "-d", "--device", help="The device of choice", default="cuda")
-    parser.add_argument(
-        "-t", "--tqdm", help="If tqdm should be used", default="False")
+        "-a", "--architecture", help="The architecture of choice", default="unet"
+    )
+    parser.add_argument("-d", "--device", help="The device of choice", default="cuda")
+    parser.add_argument("-t", "--tqdm", help="If tqdm should be used", default="True")
 
     args = parser.parse_args()
 

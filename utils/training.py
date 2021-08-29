@@ -130,6 +130,7 @@ def test(model, loader, write_to, device: str = "cpu"):
     for input_arrays, known_arrays, sample_ids in loader:
 
         out = model(input_arrays.unsqueeze(1).to(device)).squeeze(1)
+        out = torch.round(out * 255)
 
         outs.extend(out.detach().cpu().numpy())
         knowns.extend(known_arrays.detach().cpu().numpy())
@@ -263,3 +264,11 @@ def search_configs(
         )
 
         print(f"Done (took {time() - dt:.2f}s)")
+
+def load_model(model_class, location, data_module):
+    
+    model_dict = torch.load(location)
+    model = model_class(data_module, **model_dict["kwargs"])
+    model.load_state_dict(model_dict["model"])
+
+    return model

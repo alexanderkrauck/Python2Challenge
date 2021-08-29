@@ -35,7 +35,7 @@ def train(
     n_minibatches = len(loader)
 
     if use_tqdm:
-        iterate = tqdm.tqdm(loader)
+        iterate = tqdm.tqdm(loader, desc=f"Ep{epoch:02}")
     else:
         iterate = loader
 
@@ -82,12 +82,12 @@ def validate(
     logger: SummaryWriter,
     run_type: str = "test",
     device: str = "cpu",
-    use_tqdm=False,
+    use_tqdm=False
 ):
     model.eval()
 
     if use_tqdm:
-        iterate = tqdm.tqdm(loader)
+        iterate = tqdm.tqdm(loader, desc=f"Ep{epoch:02}")
     else:
         iterate = loader
 
@@ -157,17 +157,27 @@ def train_config(
     epochs=10,
     device="cpu",
     tqdm=False,
+    use_lr_scheduler: bool = False,
+    optimizer_state_dict = None,
     **kwargs,
 ):
     logdir = logger.get_logdir()
-    model = model_class(data_module=data_module, **kwargs).to(device)
+    if isinstance(model_class, type):
+        model = model_class(data_module=data_module, **kwargs).to(device)
+    else:
+        model = model_class
 
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    if optimizer_state_dict is not None:
+        optimizer.load_state_dict(optimizer_state_dict)
+    if use_lr_scheduler:
+        lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer, mode="max", patience=2, cooldown=1, verbose=True, threshold=2
+        )
 
     train_loader = data_module.make_train_loader(batch_size=batch_size)
     val_loader = data_module.make_val_loader(batch_size=batch_size)
     test_loader = data_module.make_test_loader(batch_size=batch_size)
-
 
     best_val_score = validate(
         model,
@@ -193,6 +203,9 @@ def train_config(
             device=device,
             use_tqdm=tqdm,
         )
+
+        if use_lr_scheduler:
+            lr_scheduler.step(val_score)
 
         if val_score > best_val_score:
             best_val_score = val_score
@@ -265,8 +278,9 @@ def search_configs(
 
         print(f"Done (took {time() - dt:.2f}s)")
 
+
 def load_model(model_class, location, data_module):
-    
+
     model_dict = torch.load(location)
     model = model_class(data_module, **model_dict["kwargs"])
     model.load_state_dict(model_dict["model"])

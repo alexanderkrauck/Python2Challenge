@@ -16,15 +16,27 @@ import os
 
 import numpy as np
 from PIL import Image
+from torchvision.transforms.transforms import RandomApply
 
 
 class DirectoryDataset(Dataset):
-    def __init__(self, dirs, root_dir) -> None:
+    def __init__(self, dirs, root_dir, do_image_augmentation: bool = False) -> None:
         super().__init__()
 
-        self.first_transform = torchvision.transforms.Compose(
-            [transforms.Resize((90, 90)), transforms.ToTensor()]
-        )
+        transform_list = [transforms.ToTensor()]
+        if do_image_augmentation:
+            transform_list.extend(
+                [
+                    transforms.RandomHorizontalFlip(p=0.5),
+                    transforms.RandomApply(
+                        [transforms.RandomRotation(90), transforms.CenterCrop(800)]
+                    ),
+                    transforms.RandomAutocontrast(p=0.2),
+                ]
+            )
+        transform_list.append(transforms.Resize((90, 90)))
+
+        self.first_transform = transforms.Compose(transform_list)
 
         sample_list = []
         for dir in dirs:
@@ -40,8 +52,9 @@ class DirectoryDataset(Dataset):
 
     def __getitem__(self, index):
         pil_img = Image.open(self.samples[index])
-        x = torch.squeeze(
-            self.first_transform(pil_img), dim=0
+
+        x = self.first_transform(pil_img).squeeze(
+            0
         )  # add transforms (image augmentation)
         input = torch.ones_like(x) * -1
 
@@ -85,7 +98,12 @@ class TestDataset(Dataset):
 class DataModule:
     """"""
 
-    def __init__(self, root_dir: str = "dataset", val_ratio: float = 0.2):
+    def __init__(
+        self,
+        root_dir: str = "dataset",
+        val_ratio: float = 0.2,
+        do_train_image_augmentation: bool = True,
+    ):
         """
         
         Parameters
@@ -109,7 +127,7 @@ class DataModule:
             self.dirs[indices[:n_valset_dirs]], root_dir
         )
         self.train_dataset = DirectoryDataset(
-            self.dirs[indices[n_valset_dirs:]], root_dir
+            self.dirs[indices[n_valset_dirs:]], root_dir, do_train_image_augmentation
         )
 
     def make_train_loader(self, batch_size=64):

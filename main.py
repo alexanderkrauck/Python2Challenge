@@ -10,7 +10,14 @@ import utils.training as training
 
 from utils.baselines import Autoencoder, Unet
 
-search_grid = {"lr": [1e-2, 1e-3], "weight_decay": [1e-8, 1e-5], "batch_size": [64, 16]}
+search_grid = {
+    "lr": [1e-3],
+    "weight_decay": [1e-8],
+    "batch_size": [16],
+    "use_sigmoid_out": [True],
+    "use_lr_scheduler": [True],
+    "epochs": [50],
+}
 
 
 def main(
@@ -33,7 +40,7 @@ def main(
 
     name = name.replace("*time*", datetime.now().strftime("%d-%m-%Y_%H-%M-%S"))
 
-    data_module = data.DataModule()
+    data_module = data.DataModule(do_train_image_augmentation=False)
 
     ldir = logdir + "/" + name
 
@@ -60,7 +67,7 @@ if __name__ == "__main__":
 
     parser = ArgumentParser()
     parser.add_argument(
-        "-n", "--name", help="Name of the experiment", default=f"new_try2"
+        "-n", "--name", help="Name of the experiment", default=f"augmentation_try"
     )
     parser.add_argument(
         "-l", "--logdir", help="Directories where logs are stored", default=f"runs"

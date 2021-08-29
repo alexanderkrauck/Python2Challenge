@@ -32,7 +32,7 @@ class Unet(nn.Module):
     I reduces the number of challels in the layers
     """
 
-    def __init__(self, data_module, **kwargs):
+    def __init__(self, data_module, use_sigmoid_out = False, **kwargs):
         super(Unet, self).__init__()
 
         self.e1 = EncoderBlock(1, 32)
@@ -48,6 +48,8 @@ class Unet(nn.Module):
         self.d4 = DecoderBlock(64, 32)
 
         self.outputs = nn.Conv2d(32, 1, kernel_size=1, padding=0)
+
+        self.use_sigmoid_out = use_sigmoid_out
 
     def forward(self, x):
 
@@ -78,6 +80,9 @@ class Unet(nn.Module):
         del d4
 
         outputs = outputs[:, :, 3:-3, 3:-3]
+
+        if self.use_sigmoid_out:
+            outputs = torch.sigmoid(outputs)
 
         return outputs
 
